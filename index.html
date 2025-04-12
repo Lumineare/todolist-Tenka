@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tenka's Todo List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+        
+        .task-checkbox:checked + .task-text {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .tenka-float {
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        .tenka-speech {
+            position: relative;
+            background-color: #f3f4f6;
+            border-radius: 1rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .tenka-speech.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .tenka-speech:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #f3f4f6 transparent;
+        }
+        
+        .dark .tenka-speech {
+            background-color: #374151;
+        }
+        
+        .dark .tenka-speech:after {
+            border-color: #374151 transparent;
+        }
+        
+        .progress-bar {
+            height: 4px;
+            border-radius: 2px;
+            background-color: #e5e7eb;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ec4899, #8b5cf6);
+            transition: width 0.3s ease;
+        }
+        
+        .task-priority-high {
+            border-left: 3px solid #ef4444;
+        }
+        
+        .task-priority-medium {
+            border-left: 3px solid #f59e0b;
+        }
+        
+        .task-priority-low {
+            border-left: 3px solid #10b981;
+        }
+        
+        .task-due-date {
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+        
+        .task-due-date.overdue {
+            color: #ef4444;
+            font-weight: 500;
+        }
+        
+        .task-due-date.today {
+            color: #f59e0b;
+            font-weight: 500;
+        }
+        
+        .task-actions {
+            opacity: 1; /* Always visible on mobile */
+        }
+        
+        .task-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 9999px;
+            background-color: #e5e7eb;
+            color: #4b5563;
+            margin-right: 0.3rem;
+            margin-bottom: 0.2rem;
+        }
+        
+        .dark .task-tag {
+            background-color: #4b5563;
+            color: #e5e7eb;
+        }
+        
+        .task-note {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 0.2rem;
+            padding-left: 1.5rem;
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            transition: all 0.2s ease;
+            width: 200px;
+        }
+        
+        .dropdown-menu.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        .dark .dropdown-menu {
+            background-color: #374151;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .dark .dropdown-item:hover {
+            background-color: #4b5563;
+        }
+        
+        .dropdown-item i {
+            margin-right: 0.5rem;
+            width: 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            padding: 1rem;
+        }
+        
+        .modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 0.5rem;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+        }
+        
+        .modal.show .modal-content {
+            transform: translateY(0);
+        }
+        
+        .dark .modal-content {
+            background-color: #374151;
+        }
+        
+        .modal-header {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dark .modal-header {
+            border-bottom-color: #4b5563;
+        }
+        
+        .modal-body {
+            padding: 0.75rem;
+        }
+        
+        .modal-footer {
+            padding: 0.75rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .dark .modal-footer {
+            border-top-color: #4b5563;
+        }
+        
+        .priority-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .priority-dot-high {
+            background-color: #ef4444;
+        }
+        
+        .priority-dot-medium {
+            background-color: #f59e0b;
+        }
+        
+        .priority-dot-low {
+            background-color: #10b981;
+        }
+        
+        .sort-option.active {
+            color: #ec4899;
+            font-weight: 500;
+        }
+        
+        .dark .sort-option.active {
+            color: #f472b6;
+        }
+        
+        .task-search:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.5);
+        }
+        
+        .task-stats {
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .dark .task-stats {
+            background-color: #374151;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.3rem;
+            font-size: 0.8rem;
+        }
+        
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+        }
+        
+        .stat-value {
+            font-weight: 500;
+        }
+        
+        .task-details {
+            margin-top: 0.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .task-details-item {
+            display: flex;
+            margin-bottom: 0.2rem;
+            font-size: 0.75rem;
+        }
+        
+        .task-details-label {
+            color: #6b7280;
+            min-width: 60px;
+        }
+        
+        .task-details-value {
+            flex-grow: 1;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 640px) {
+            .container {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            
+            .task-form-input {
+                flex-direction: column;
+            }
+            
+            .task-form-input input {
+                border-radius: 0.5rem !important;
+                margin-bottom: 0.5rem;
+            }
+            
+            .task-form-input button {
+                border-radius: 0.5rem !important;
+                width: 100%;
+            }
+            
+            .task-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .dropdown-menu {
+                width: 180px;
+                font-size: 0.8rem;
+            }
+            
+            .modal-content {
+                width: 95%;
+            }
+            
+            .task-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .task-filters {
+                justify-content: space-between;
+                width: 100%;
+            }
+            
+            .task-utils {
+                justify-content: space-between;
+                width: 100%;
+            }
+        }
+        
+        /* Prevent zoom on input focus */
+        @media screen and (-webkit-min-device-pixel-ratio:0) {
+            select,
+            textarea,
+            input {
+                font-size: 16px;
+            }
+        }
+        
+        /* Hide scrollbar but allow scrolling */
+        .hide-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;  /* Chrome, Safari and Opera */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+    <div class="container mx-auto px-2 py-4 max-w-3xl">
+        <!-- Header with theme toggle -->
+        <header class="flex justify-between items-center mb-4">
+            <div class="flex items-center">
+                <div class="character-container character-happy">
+                    <img src="https://i.imgur.com/JQZ3yJ8.png" alt="Tenka Izumo" class="w-12 h-12 rounded-full mr-3 tenka-float">
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-pink-600 dark:text-pink-400">Tenka's Todo</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">"Let's get things done~"</p>
+                </div>
+            </div>
+            <button id="themeToggle" class="theme-toggle bg-pink-600 dark:bg-pink-400 text-white p-2 rounded-full text-lg">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:inline"></i>
+            </button>
+        </header>
+        
+        <!-- Tenka's speech bubble -->
+        <div id="tenkaSpeech" class="tenka-speech">
+            <p id="tenkaMessage">Hello there! Let's complete some tasks together~</p>
+        </div>
+        
+        <!-- Task stats -->
+        <div class="task-stats hidden" id="taskStats">
+            <div class="stat-item">
+                <span class="stat-label">Total Tasks:</span>
+                <span class="stat-value" id="statTotal">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Completed:</span>
+                <span class="stat-value" id="statCompleted">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Active:</span>
+                <span class="stat-value" id="statActive">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Overdue:</span>
+                <span class="stat-value" id="statOverdue">0</span>
+            </div>
+        </div>
+        
+        <!-- Progress bar -->
+        <div class="mb-4">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-medium">Progress</span>
+                <span id="progressPercent" class="text-xs font-medium">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- Task controls -->
+        <div class="flex flex-col gap-2 mb-3">
+            <div class="flex justify-between items-center task-controls">
+                <div class="flex items-center gap-1">
+                    <button id="showStats" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 p-2">
+                        <i class="fas fa-chart-pie text-sm"></i>
+                    </button>
+                    <div class="relative">
+                        <button id="sortButton" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 flex items-center p-2 text-sm">
+                            <i class="fas fa-sort-amount-down mr-1 text-sm"></i>
+                            <span>Sort</span>
+                        </button>
+                        <div id="sortDropdown" class="dropdown-menu">
+                            <div class="dropdown-item sort-option" data-sort="date-added-asc">
+                                <i class="fas fa-plus"></i> Date Added (Oldest)
+                            </div>
+                            <div class="dropdown-item sort-option" data-sort="date-added-desc">
+                                <i class="fas fa-plus"></i> Date Added (Newest)
+                            </div>
+                            <div class="dropdown-item sort-option" data-sort="due-date-asc">
+                                <i class="fas fa-calendar-day"></i> Due Date (Soonest)
+                            </div>
+                            <div class="dropdown-item sort-option" data-sort="due-date-desc">
+                                <i class="fas fa-calendar-day"></i> Due Date (Latest)
+                            </div>
+                            <div class="dropdown-item sort-option" data-sort="priority">
+                                <i class="fas fa-flag"></i> Priority
+                            </div>
+                            <div class="dropdown-item sort-option" data-sort="alphabetical">
+                                <i class="fas fa-sort-alpha-down"></i> Alphabetical
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-1">
+                    <div class="relative">
+                        <input type="text" id="taskSearch" placeholder="Search..." class="task-search px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-xs w-32">
+                        <button id="clearSearch" class="absolute right-2 top-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hidden">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                    <button id="addTagFilter" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 p-2">
+                        <i class="fas fa-tags text-sm"></i>
+                    </button>
+                    <button id="toggleCompletedVisibility" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 p-2">
+                        <i class="fas fa-eye text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add task form -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 to-purple-600"></div>
+            <form id="taskForm" class="flex flex-col">
+                <div class="flex flex-col task-form-input">
+                    <input type="text" id="taskInput" placeholder="What needs to be done?" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-pink-500 dark:bg-gray-700 dark:text-white text-sm">
+                    <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300 flex items-center justify-center text-sm">
+                        <i class="fas fa-plus mr-1"></i> Add Task
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <div class="relative flex-grow">
+                        <select id="taskPriority" class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 text-xs">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="relative flex-grow">
+                        <input type="date" id="taskDueDate" class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 text-xs">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <input type="text" id="taskTags" placeholder="Tags (comma separated)" class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 text-xs">
+                </div>
+                <div class="mt-2">
+                    <textarea id="taskNote" placeholder="Notes (optional)" rows="2" class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 text-xs"></textarea>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Task list -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-pink-600 dark:text-pink-400">Your Tasks</h2>
+                <div id="taskCount" class="text-xs text-gray-500 dark:text-gray-400">0 tasks</div>
+            </div>
+            
+            <div id="taskList" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[50vh] overflow-y-auto hide-scrollbar">
+                <!-- Tasks will be added here dynamically -->
+                <div class="text-center py-6 text-gray-500 dark:text-gray-400 text-sm" id="emptyState">
+                    <i class="fas fa-clipboard-list text-3xl mb-2"></i>
+                    <p>No tasks yet! Add one above.</p>
+                </div>
+            </div>
+            
+            <!-- Task filters -->
+            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2 text-xs">
+                <div class="flex justify-between items-center task-filters">
+                    <button id="showAll" class="text-pink-600 dark:text-pink-400 font-medium">All</button>
+                    <button id="showActive" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400">Active</button>
+                    <button id="showCompleted" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400">Completed</button>
+                </div>
+                <div class="flex justify-between items-center task-utils">
+                    <button id="clearCompleted" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400">Clear Completed</button>
+                    <button id="completeAll" class="text-gray-500 dark:text-gray-400 hover:text-pink-600 dark:hover:text-pink-400">Complete All</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tenka quote -->
+        <div class="mt-4 text-center text-xs text-gray-500 dark:text-gray-400 italic">
+            <p>"The stronger you become, the more I'll want you~" - Tenka Izumo</p>
+        </div>
+    </div>
+    
+    <!-- Task Detail Modal -->
+    <div id="taskDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-base font-semibold">Task Details</h3>
+                <button id="closeTaskDetailModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="flex items-center mb-3">
+                    <input type="checkbox" id="detailTaskCheckbox" class="task-checkbox h-5 w-5 text-pink-600 rounded border-gray-300 focus:ring-pink-500 dark:bg-gray-700 dark:border-gray-600 mr-2">
+                    <label for="detailTaskCheckbox" class="task-text flex-grow text-base font-medium" id="detailTaskTitle"></label>
+                </div>
+                
+                <div class="task-details">
+                    <div class="task-details-item">
+                        <span class="task-details-label">Priority:</span>
+                        <span class="task-details-value" id="detailTaskPriority"></span>
+                    </div>
+                    <div class="task-details-item">
+                        <span class="task-details-label">Due Date:</span>
+                        <span class="task-details-value" id="detailTaskDueDate"></span>
+                    </div>
+                    <div class="task-details-item">
+                        <span class="task-details-label">Tags:</span>
+                        <span class="task-details-value" id="detailTaskTags"></span>
+                    </div>
+                    <div class="task-details-item">
+                        <span class="task-details-label">Created:</span>
+                        <span class="task-details-value" id="detailTaskCreated"></span>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+                    <textarea id="detailTaskNotes" class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 text-sm" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveTaskDetails" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded-lg font-medium transition duration-300 text-sm">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tag Filter Modal -->
+    <div id="tagFilterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-base font-semibold">Filter by Tags</h3>
+                <button id="closeTagFilterModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="tagFilterList" class="flex flex-wrap gap-2 mb-3">
+                    <!-- Tags will be added here dynamically -->
+                </div>
+                <div class="flex">
+                    <input type="text" id="newTagFilter" placeholder="Add new tag filter" class="flex-grow px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-l-lg dark:bg-gray-700 text-sm">
+                    <button id="addNewTagFilter" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded-r-lg font-medium transition duration-300 text-sm">
+                        Add
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="applyTagFilters" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded-lg font-medium transition duration-300 text-sm">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme toggle
+            const themeToggle = document.getElementById('themeToggle');
+            const html = document.documentElement;
+            
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            html.classList.toggle('dark', savedTheme === 'dark');
+            
+            themeToggle.addEventListener('click', () => {
+                html.classList.toggle('dark');
+                const theme = html.classList.contains('dark') ? 'dark' : 'light';
+                localStorage.setItem('theme', theme);
+            });
+            
+            // Todo list functionality
+            const taskForm = document.getElementById('taskForm');
+            const taskInput = document.getElementById('taskInput');
+            const taskPriority = document.getElementById('taskPriority');
+            const taskDueDate = document.getElementById('taskDueDate');
+            const taskTags = document.getElementById('taskTags');
+            const taskNote = document.getElementById('taskNote');
+            const taskList = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            const taskCount = document.getElementById('taskCount');
+            const showAll = document.getElementById('showAll');
+            const showActive = document.getElementById('showActive');
+            const showCompleted = document.getElementById('showCompleted');
+            const clearCompleted = document.getElementById('clearCompleted');
+            const completeAll = document.getElementById('completeAll');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = document.getElementById('progressPercent');
+            const tenkaSpeech = document.getElementById('tenkaSpeech');
+            const tenkaMessage = document.getElementById('tenkaMessage');
+            const characterContainer = document.querySelector('.character-container');
+            const taskStats = document.getElementById('taskStats');
+            const statTotal = document.getElementById('statTotal');
+            const statCompleted = document.getElementById('statCompleted');
+            const statActive = document.getElementById('statActive');
+            const statOverdue = document.getElementById('statOverdue');
+            const showStats = document.getElementById('showStats');
+            const sortButton = document.getElementById('sortButton');
+            const sortDropdown = document.getElementById('sortDropdown');
+            const sortOptions = document.querySelectorAll('.sort-option');
+            const taskSearch = document.getElementById('taskSearch');
+            const clearSearch = document.getElementById('clearSearch');
+            const addTagFilter = document.getElementById('addTagFilter');
+            const toggleCompletedVisibility = document.getElementById('toggleCompletedVisibility');
+            const taskDetailModal = document.getElementById('taskDetailModal');
+            const closeTaskDetailModal = document.getElementById('closeTaskDetailModal');
+            const detailTaskCheckbox = document.getElementById('detailTaskCheckbox');
+            const detailTaskTitle = document.getElementById('detailTaskTitle');
+            const detailTaskPriority = document.getElementById('detailTaskPriority');
+            const detailTaskDueDate = document.getElementById('detailTaskDueDate');
+            const detailTaskTags = document.getElementById('detailTaskTags');
+            const detailTaskCreated = document.getElementById('detailTaskCreated');
+            const detailTaskNotes = document.getElementById('detailTaskNotes');
+            const saveTaskDetails = document.getElementById('saveTaskDetails');
+            const tagFilterModal = document.getElementById('tagFilterModal');
+            const closeTagFilterModal = document.getElementById('closeTagFilterModal');
+            const tagFilterList = document.getElementById('tagFilterList');
+            const newTagFilter = document.getElementById('newTagFilter');
+            const addNewTagFilter = document.getElementById('addNewTagFilter');
+            const applyTagFilters = document.getElementById('applyTagFilters');
+            
+            // Set default due date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const formattedDate = tomorrow.toISOString().split('T')[0];
+            taskDueDate.value = formattedDate;
+            
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            let currentFilter = 'all';
+            let currentSort = 'date-added-desc';
+            let searchQuery = '';
+            let activeTagFilters = [];
+            let showCompletedTasks = true;
+            let currentlyEditingTaskId = null;
+            
+            // Tenka's messages
+            const tenkaMessages = {
+                empty: "You have no tasks yet~ Let's add some!",
+                added: "Good job adding a task! Now complete it for me~",
+                completed: "Well done, slave~ You're making me happy!",
+                allCompleted: "Wow! You completed everything! *hugs*",
+                deleted: "Hmph! Why did you delete that?",
+                cleared: "You cleaned up nicely~",
+                angry: "Hey! You're not working hard enough!",
+                excited: "You're doing great! Keep going~",
+                statsShown: "Here's how you're doing~",
+                sorted: "Tasks are now organized just how I like them~",
+                searched: "Looking for something special?",
+                tagged: "Filtering by tags, how efficient~",
+                detailViewed: "Examining the details, I see~",
+                detailSaved: "Changes saved successfully~",
+                prioritySet: "Priority set! Don't disappoint me~"
+            };
+            
+            // Show Tenka's message
+            function showMessage(message) {
+                tenkaMessage.textContent = message;
+                tenkaSpeech.classList.add('show');
+                
+                // Character reaction
+                if (message.includes('happy') || message.includes('Well done') || message.includes('great') || message.includes('Wow')) {
+                    characterContainer.className = 'character-container character-excited';
+                } else if (message.includes('angry') || message.includes('Hmph') || message.includes('Hey')) {
+                    characterContainer.className = 'character-container character-angry';
+                } else {
+                    characterContainer.className = 'character-container character-happy';
+                }
+                
+                setTimeout(() => {
+                    tenkaSpeech.classList.remove('show');
+                    characterContainer.className = 'character-container character-happy';
+                }, 3000);
+            }
+            
+            // Update progress bar and stats
+            function updateProgressAndStats() {
+                const totalTasks = tasks.length;
+                const completedTasks = tasks.filter(task => task.completed).length;
+                const activeTasks = totalTasks - completedTasks;
+                
+                // Calculate overdue tasks
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const overdueTasks = tasks.filter(task => {
+                    if (task.completed) return false;
+                    if (!task.dueDate) return false;
+                    const dueDate = new Date(task.dueDate);
+                    return dueDate < today;
+                }).length;
+                
+                // Update progress bar
+                if (totalTasks === 0) {
+                    progressFill.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                } else {
+                    const progress = Math.round((completedTasks / totalTasks) * 100);
+                    progressFill.style.width = `${progress}%`;
+                    progressPercent.textContent = `${progress}%`;
+                }
+                
+                // Update stats
+                statTotal.textContent = totalTasks;
+                statCompleted.textContent = completedTasks;
+                statActive.textContent = activeTasks;
+                statOverdue.textContent = overdueTasks;
+                
+                // Tenka's reaction based on progress
+                if (totalTasks === 0) return;
+                
+                const progress = (completedTasks / totalTasks) * 100;
+                
+                if (progress === 100) {
+                    showMessage(tenkaMessages.allCompleted);
+                } else if (progress >= 75) {
+                    showMessage(tenkaMessages.excited);
+                } else if (progress <= 25 && completedTasks > 0) {
+                    showMessage(tenkaMessages.angry);
+                }
+            }
+            
+            // Format date for display
+            function formatDate(dateString) {
+                if (!dateString) return 'No due date';
+                
+                const date = new Date(dateString);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                if (date.toDateString() === today.toDateString()) {
+                    return 'Today';
+                } else if (date.toDateString() === tomorrow.toDateString()) {
+                    return 'Tomorrow';
+                } else {
+                    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                    return date.toLocaleDateString(undefined, options);
+                }
+            }
+            
+            // Format date for detail view
+            function formatDetailDate(dateString) {
+                if (!dateString) return 'Not set';
+                
+                const date = new Date(dateString);
+                const options = { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' };
+                return date.toLocaleDateString(undefined, options);
+            }
+            
+            // Check if a task is overdue
+            function isOverdue(dueDate) {
+                if (!dueDate) return false;
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const taskDue = new Date(dueDate);
+                
+                return taskDue < today;
+            }
+            
+            // Get priority class
+            function getPriorityClass(priority) {
+                switch (priority) {
+                    case 'high': return 'task-priority-high';
+                    case 'medium': return 'task-priority-medium';
+                    case 'low': return 'task-priority-low';
+                    default: return '';
+                }
+            }
+            
+            // Get priority dot
+            function getPriorityDot(priority) {
+                switch (priority) {
+                    case 'high': return '<span class="priority-dot priority-dot-high"></span>High';
+                    case 'medium': return '<span class="priority-dot priority-dot-medium"></span>Medium';
+                    case 'low': return '<span class="priority-dot priority-dot-low"></span>Low';
+                    default: return '';
+                }
+            }
+            
+            // Sort tasks based on current sort option
+            function sortTasks(taskArray) {
+                const sortedTasks = [...taskArray];
+                
+                switch (currentSort) {
+                    case 'date-added-asc':
+                        sortedTasks.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                        break;
+                    case 'date-added-desc':
+                        sortedTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        break;
+                    case 'due-date-asc':
+                        sortedTasks.sort((a, b) => {
+                            if (!a.dueDate && !b.dueDate) return 0;
+                            if (!a.dueDate) return 1;
+                            if (!b.dueDate) return -1;
+                            return new Date(a.dueDate) - new Date(b.dueDate);
+                        });
+                        break;
+                    case 'due-date-desc':
+                        sortedTasks.sort((a, b) => {
+                            if (!a.dueDate && !b.dueDate) return 0;
+                            if (!a.dueDate) return 1;
+                            if (!b.dueDate) return -1;
+                            return new Date(b.dueDate) - new Date(a.dueDate);
+                        });
+                        break;
+                    case 'priority':
+                        const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+                        sortedTasks.sort((a, b) => {
+                            const priorityA = priorityOrder[a.priority] || 0;
+                            const priorityB = priorityOrder[b.priority] || 0;
+                            if (priorityB !== priorityA) return priorityB - priorityA;
+                            return new Date(b.createdAt) - new Date(a.createdAt);
+                        });
+                        break;
+                    case 'alphabetical':
+                        sortedTasks.sort((a, b) => a.text.localeCompare(b.text));
+                        break;
+                    default:
+                        // Default is date-added-desc
+                        sortedTasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                }
+                
+                return sortedTasks;
+            }
+            
+            // Filter tasks based on current filter, search query, and tag filters
+            function filterTasks(taskArray) {
+                let filteredTasks = taskArray.filter(task => {
+                    // Filter by completion status
+                    if (currentFilter === 'active') {
+                        if (task.completed) return false;
+                    } else if (currentFilter === 'completed') {
+                        if (!task.completed) return false;
+                    }
+                    
+                    // Filter by search query
+                    if (searchQuery) {
+                        const searchLower = searchQuery.toLowerCase();
+                        if (!task.text.toLowerCase().includes(searchLower) && 
+                            !(task.note && task.note.toLowerCase().includes(searchLower)) &&
+                            !(task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchLower)))) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filter by tags
+                    if (activeTagFilters.length > 0) {
+                        if (!task.tags || !task.tags.some(tag => activeTagFilters.includes(tag))) {
+                            return false;
+                        }
+                    }
+                    
+                    // Filter by completed visibility
+                    if (!showCompletedTasks && task.completed) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                return filteredTasks;
+            }
+            
+            // Render tasks based on filter, search, and sort
+            function renderTasks() {
+                const filteredTasks = filterTasks(tasks);
+                const sortedTasks = sortTasks(filteredTasks);
+                
+                if (sortedTasks.length === 0) {
+                    if (tasks.length === 0) {
+                        emptyState.innerHTML = `
+                            <i class="fas fa-clipboard-list text-3xl mb-2"></i>
+                            <p>No tasks yet! Add one above.</p>
+                        `;
+                    } else {
+                        let message = '';
+                        if (searchQuery) {
+                            message = 'No tasks match your search!';
+                        } else if (activeTagFilters.length > 0) {
+                            message = 'No tasks with these tags!';
+                        } else if (currentFilter === 'active') {
+                            message = 'No active tasks!';
+                        } else if (currentFilter === 'completed') {
+                            message = 'No completed tasks!';
+                        } else {
+                            message = 'No tasks match your filters!';
+                        }
+                        
+                        emptyState.innerHTML = `
+                            <i class="fas fa-search text-3xl mb-2"></i>
+                            <p>${message}</p>
+                        `;
+                    }
+                    emptyState.style.display = 'block';
+                } else {
+                    emptyState.style.display = 'none';
+                }
+                
+                taskList.innerHTML = '';
+                sortedTasks.forEach((task, index) => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = `task-item px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center group transition ${getPriorityClass(task.priority)}`;
+                    
+                    // Find original index in tasks array
+                    const originalIndex = tasks.findIndex(t => t.id === task.id);
+                    
+                    const dueDateClass = task.dueDate ? (isOverdue(task.dueDate) ? 'overdue' : (new Date(task.dueDate).toDateString() === new Date().toDateString() ? 'today' : '')) : '';
+                    
+                    taskItem.innerHTML = `
+                        <div class="flex items-center flex-grow">
+                            <input type="checkbox" id="task-${originalIndex}" ${task.completed ? 'checked' : ''} 
+                                class="task-checkbox h-5 w-5 text-pink-600 rounded border-gray-300 focus:ring-pink-500 dark:bg-gray-700 dark:border-gray-600 mr-2">
+                            <div class="flex-grow">
+                                <label for="task-${originalIndex}" class="task-text ${task.completed ? 'line-through text-gray-400' : ''} cursor-pointer text-sm">${task.text}</label>
+                                ${task.note ? `<div class="task-note">${task.note}</div>` : ''}
+                                ${task.dueDate ? `<div class="task-due-date ${dueDateClass}">${formatDate(task.dueDate)}</div>` : ''}
+                                ${task.tags && task.tags.length > 0 ? `
+                                    <div class="task-tags mt-1">
+                                        ${task.tags.map(tag => `<span class="task-tag">${tag}</span>`).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="task-actions flex items-center gap-1">
+                            <button class="text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 view-detail-btn" data-id="${originalIndex}">
+                                <i class="fas fa-eye text-sm"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-red-500 delete-btn" data-id="${originalIndex}">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    taskList.appendChild(taskItem);
+                });
+                
+                updateTaskCount();
+                updateProgressAndStats();
+                saveTasks();
+                updateActiveSortOption();
+            }
+            
+            // Update task counter
+            function updateTaskCount() {
+                const filteredTasks = filterTasks(tasks);
+                const activeTasks = filteredTasks.filter(task => !task.completed).length;
+                const totalFilteredTasks = filteredTasks.length;
+                
+                if (currentFilter === 'all') {
+                    taskCount.textContent = `${totalFilteredTasks} ${totalFilteredTasks === 1 ? 'task' : 'tasks'}`;
+                } else if (currentFilter === 'active') {
+                    taskCount.textContent = `${activeTasks} ${activeTasks === 1 ? 'active task' : 'active tasks'}`;
+                } else {
+                    const completedTasks = totalFilteredTasks - activeTasks;
+                    taskCount.textContent = `${completedTasks} ${completedTasks === 1 ? 'completed task' : 'completed tasks'}`;
+                }
+            }
+            
+            // Update active sort option in UI
+            function updateActiveSortOption() {
+                sortOptions.forEach(option => {
+                    option.classList.remove('active');
+                    if (option.dataset.sort === currentSort) {
+                        option.classList.add('active');
+                    }
+                });
+            }
+            
+            // Save tasks to localStorage
+            function saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            }
+            
+            // Generate a simple ID for tasks
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+            
+            // Add new task
+            taskForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const text = taskInput.value.trim();
+                
+                if (text) {
+                    const newTask = {
+                        id: generateId(),
+                        text: text,
+                        completed: false,
+                        priority: taskPriority.value,
+                        dueDate: taskDueDate.value,
+                        tags: taskTags.value ? taskTags.value.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+                        note: taskNote.value.trim(),
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    tasks.unshift(newTask);
+                    
+                    // Reset form
+                    taskInput.value = '';
+                    taskPriority.value = 'medium';
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    taskDueDate.value = tomorrow.toISOString().split('T')[0];
+                    taskTags.value = '';
+                    taskNote.value = '';
+                    
+                    renderTasks();
+                    showMessage(tenkaMessages.added);
+                }
+            });
+            
+            // Handle checkbox changes
+            taskList.addEventListener('change', function(e) {
+                if (e.target.classList.contains('task-checkbox')) {
+                    const index = parseInt(e.target.id.split('-')[1]);
+                    tasks[index].completed = e.target.checked;
+                    renderTasks();
+                    
+                    if (tasks[index].completed) {
+                        showMessage(tenkaMessages.completed);
+                    }
+                }
+            });
+            
+            // Handle delete button clicks
+            taskList.addEventListener('click', function(e) {
+                if (e.target.closest('.delete-btn')) {
+                    const index = parseInt(e.target.closest('.delete-btn').dataset.id);
+                    tasks.splice(index, 1);
+                    renderTasks();
+                    showMessage(tenkaMessages.deleted);
+                }
+                
+                // Handle view detail button clicks
+                if (e.target.closest('.view-detail-btn')) {
+                    const index = parseInt(e.target.closest('.view-detail-btn').dataset.id);
+                    openTaskDetailModal(index);
+                    showMessage(tenkaMessages.detailViewed);
+                }
+            });
+            
+            // Filter buttons
+            showAll.addEventListener('click', function() {
+                currentFilter = 'all';
+                updateActiveFilterButton();
+                renderTasks();
+            });
+            
+            showActive.addEventListener('click', function() {
+                currentFilter = 'active';
+                updateActiveFilterButton();
+                renderTasks();
+            });
+            
+            showCompleted.addEventListener('click', function() {
+                currentFilter = 'completed';
+                updateActiveFilterButton();
+                renderTasks();
+            });
+            
+            function updateActiveFilterButton() {
+                [showAll, showActive, showCompleted].forEach(btn => {
+                    btn.classList.remove('text-pink-600', 'dark:text-pink-400', 'font-medium');
+                    btn.classList.add('text-gray-500', 'dark:text-gray-400');
+                });
+                
+                if (currentFilter === 'all') {
+                    showAll.classList.add('text-pink-600', 'dark:text-pink-400', 'font-medium');
+                    showAll.classList.remove('text-gray-500', 'dark:text-gray-400');
+                } else if (currentFilter === 'active') {
+                    showActive.classList.add('text-pink-600', 'dark:text-pink-400', 'font-medium');
+                    showActive.classList.remove('text-gray-500', 'dark:text-gray-400');
+                } else {
+                    showCompleted.classList.add('text-pink-600', 'dark:text-pink-400', 'font-medium');
+                    showCompleted.classList.remove('text-gray-500', 'dark:text-gray-400');
+                }
+            }
+            
+            // Clear completed tasks
+            clearCompleted.addEventListener('click', function() {
+                if (tasks.some(task => task.completed)) {
+                    tasks = tasks.filter(task => !task.completed);
+                    renderTasks();
+                    showMessage(tenkaMessages.cleared);
+                }
+            });
+            
+            // Complete all tasks
+            completeAll.addEventListener('click', function() {
+                if (tasks.length > 0) {
+                    const allCompleted = tasks.every(task => task.completed);
+                    
+                    if (!allCompleted) {
+                        tasks.forEach(task => task.completed = true);
+                        renderTasks();
+                        showMessage(tenkaMessages.allCompleted);
+                    }
+                }
+            });
+            
+            // Toggle stats visibility
+            showStats.addEventListener('click', function() {
+                taskStats.classList.toggle('hidden');
+                showMessage(tenkaMessages.statsShown);
+            });
+            
+            // Sort dropdown functionality
+            sortButton.addEventListener('click', function() {
+                sortDropdown.classList.toggle('show');
+            });
+            
+            // Close sort dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!sortButton.contains(e.target) && !sortDropdown.contains(e.target)) {
+                    sortDropdown.classList.remove('show');
+                }
+            });
+            
+            // Handle sort option selection
+            sortOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    currentSort = this.dataset.sort;
+                    renderTasks();
+                    sortDropdown.classList.remove('show');
+                    showMessage(tenkaMessages.sorted);
+                });
+            });
+            
+            // Task search functionality
+            taskSearch.addEventListener('input', function() {
+                searchQuery = this.value.trim();
+                if (searchQuery) {
+                    clearSearch.classList.remove('hidden');
+                } else {
+                    clearSearch.classList.add('hidden');
+                }
+                renderTasks();
+                showMessage(tenkaMessages.searched);
+            });
+            
+            clearSearch.addEventListener('click', function() {
+                taskSearch.value = '';
+                searchQuery = '';
+                clearSearch.classList.add('hidden');
+                renderTasks();
+            });
+            
+            // Toggle completed tasks visibility
+            toggleCompletedVisibility.addEventListener('click', function() {
+                showCompletedTasks = !showCompletedTasks;
+                this.innerHTML = showCompletedTasks ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                renderTasks();
+            });
+            
+            // Open task detail modal
+            function openTaskDetailModal(index) {
+                const task = tasks[index];
+                currentlyEditingTaskId = index;
+                
+                detailTaskCheckbox.checked = task.completed;
+                detailTaskTitle.textContent = task.text;
+                detailTaskPriority.innerHTML = getPriorityDot(task.priority);
+                detailTaskDueDate.textContent = task.dueDate ? formatDetailDate(task.dueDate) : 'Not set';
+                detailTaskTags.innerHTML = task.tags && task.tags.length > 0 ? 
+                    task.tags.map(tag => `<span class="task-tag">${tag}</span>`).join('') : 'No tags';
+                detailTaskCreated.textContent = formatDetailDate(task.createdAt);
+                detailTaskNotes.value = task.note || '';
+                
+                taskDetailModal.classList.add('show');
+            }
+            
+            // Close task detail modal
+            closeTaskDetailModal.addEventListener('click', function() {
+                taskDetailModal.classList.remove('show');
+            });
+            
+            // Save task details
+            saveTaskDetails.addEventListener('click', function() {
+                if (currentlyEditingTaskId !== null) {
+                    const task = tasks[currentlyEditingTaskId];
+                    task.completed = detailTaskCheckbox.checked;
+                    task.note = detailTaskNotes.value.trim();
+                    
+                    renderTasks();
+                    taskDetailModal.classList.remove('show');
+                    showMessage(tenkaMessages.detailSaved);
+                }
+            });
+            
+            // Open tag filter modal
+            addTagFilter.addEventListener('click', function() {
+                // Get all unique tags from tasks
+                const allTags = [];
+                tasks.forEach(task => {
+                    if (task.tags && task.tags.length > 0) {
+                        task.tags.forEach(tag => {
+                            if (!allTags.includes(tag)) {
+                                allTags.push(tag);
+                            }
+                        });
+                    }
+                });
+                
+                // Render tag filter list
+                tagFilterList.innerHTML = '';
+                allTags.forEach(tag => {
+                    const isActive = activeTagFilters.includes(tag);
+                    const tagElement = document.createElement('div');
+                    tagElement.className = `px-2 py-1 rounded-full cursor-pointer flex items-center text-xs ${isActive ? 'bg-pink-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`;
+                    tagElement.innerHTML = `
+                        ${tag}
+                        ${isActive ? '<i class="fas fa-check ml-1"></i>' : ''}
+                    `;
+                    tagElement.addEventListener('click', () => {
+                        if (activeTagFilters.includes(tag)) {
+                            activeTagFilters = activeTagFilters.filter(t => t !== tag);
+                        } else {
+                            activeTagFilters.push(tag);
+                        }
+                        tagFilterModal.classList.remove('show');
+                        renderTagFilterModal();
+                    });
+                    tagFilterList.appendChild(tagElement);
+                });
+                
+                tagFilterModal.classList.add('show');
+                showMessage(tenkaMessages.tagged);
+            });
+            
+            // Render tag filter modal
+            function renderTagFilterModal() {
+                // Get all unique tags from tasks
+                const allTags = [];
+                tasks.forEach(task => {
+                    if (task.tags && task.tags.length > 0) {
+                        task.tags.forEach(tag => {
+                            if (!allTags.includes(tag)) {
+                                allTags.push(tag);
+                            }
+                        });
+                    }
+                });
+                
+                // Render tag filter list
+                tagFilterList.innerHTML = '';
+                allTags.forEach(tag => {
+                    const isActive = activeTagFilters.includes(tag);
+                    const tagElement = document.createElement('div');
+                    tagElement.className = `px-2 py-1 rounded-full cursor-pointer flex items-center text-xs ${isActive ? 'bg-pink-600 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'}`;
+                    tagElement.innerHTML = `
+                        ${tag}
+                        ${isActive ? '<i class="fas fa-check ml-1"></i>' : ''}
+                    `;
+                    tagElement.addEventListener('click', () => {
+                        if (activeTagFilters.includes(tag)) {
+                            activeTagFilters = activeTagFilters.filter(t => t !== tag);
+                        } else {
+                            activeTagFilters.push(tag);
+                        }
+                        renderTagFilterModal();
+                    });
+                    tagFilterList.appendChild(tagElement);
+                });
+            }
+            
+            // Close tag filter modal
+            closeTagFilterModal.addEventListener('click', function() {
+                tagFilterModal.classList.remove('show');
+            });
+            
+            // Add new tag filter
+            addNewTagFilter.addEventListener('click', function() {
+                const newTag = newTagFilter.value.trim();
+                if (newTag && !activeTagFilters.includes(newTag)) {
+                    activeTagFilters.push(newTag);
+                    newTagFilter.value = '';
+                    renderTagFilterModal();
+                }
+            });
+            
+            // Apply tag filters
+            applyTagFilters.addEventListener('click', function() {
+                tagFilterModal.classList.remove('show');
+                renderTasks();
+            });
+            
+            // Close modals when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!addTagFilter.contains(e.target) && !tagFilterModal.contains(e.target)) {
+                    tagFilterModal.classList.remove('show');
+                }
+                
+                const taskDetailModalContent = document.querySelector('.modal-content');
+                if (taskDetailModal.classList.contains('show') && !taskDetailModalContent.contains(e.target) && e.target !== document.querySelector('.view-detail-btn')) {
+                    taskDetailModal.classList.remove('show');
+                }
+            });
+            
+            // Initial render
+            renderTasks();
+            updateActiveFilterButton();
+            
+            // Show initial message
+            setTimeout(() => {
+                tenkaSpeech.classList.add('show');
+                setTimeout(() => {
+                    tenkaSpeech.classList.remove('show');
+                }, 3000);
+            }, 1000);
+            
+            // Prevent form submission on Enter in search field
+            taskSearch.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=ahmadjibril27/tenka-todolist" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>
